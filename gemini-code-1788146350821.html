@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우주 테라포밍 타이쿤</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #030305; color: #fff; padding: 20px; }
+        h1 { text-align: center; color: #ff5533; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,85,51,0.5); }
+        
+        .container { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1100px; margin: 0 auto; }
+        .panel { background-color: rgba(20, 15, 25, 0.9); border: 1px solid #442233; border-radius: 12px; padding: 20px; flex: 1; min-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
+        
+        #game-view {
+            width: 100%;
+            height: 300px;
+            border-radius: 10px;
+            border: 2px solid #662233;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 15px;
+            perspective: 600px;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        .surface-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transform-style: preserve-3d;
+        }
+
+        .building-object {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            transition: all 0.3s;
+            filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.9));
+            animation: constructAnim 0.6s ease-out;
+        }
+
+        @keyframes constructAnim {
+            0% { transform: translate(-50%, -200%) scale(0.2); opacity: 0; filter: brightness(3); }
+            50% { opacity: 1; filter: brightness(2); }
+            100% { transform: translate(-50%, -100%) scale(1); filter: brightness(1); }
+        }
+
+        .stats { font-size: 1em; line-height: 1.8; }
+        .stat-value { font-weight: bold; color: #ff9966; }
+        .btn { display: block; width: 100%; padding: 12px; margin: 10px 0; background-color: #d34836; color: white; border: none; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 0 #902010; }
+        .btn:hover { background-color: #ff5533; transform: translateY(-1px); }
+        .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #902010; }
+        .btn:disabled { background-color: #2a1a1a; color: #554444; box-shadow: none; cursor: not-allowed; transform: none; }
+        
+        .progress-bar { width: 100%; background-color: #221111; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px; border: 1px solid #442222; }
+        .fill { height: 100%; background: linear-gradient(90deg, #ff5533, #4caf50); width: 0%; transition: width 0.3s; }
+        
+        .building-item { border-bottom: 1px solid #331522; padding: 12px 0; }
+        .building-item:last-child { border-bottom: none; }
+        
+        #stage-title { font-size: 1.5em; color: #ffaa00; margin-bottom: 10px; text-align: center; text-shadow: 0 0 8px rgba(255,170,0,0.4); }
+    </style>
+</head>
+<body>
+
+    <h1>🌌 행성 테라포밍 타이쿤</h1>
+
+    <div class="container">
+        <!-- 관측창 및 통계 정보 -->
+        <div class="panel">
+            <div id="stage-title">단계 1: 화성 (Mars)</div>
+            
+            <div id="game-view">
+                <div id="surface-layer" class="surface-layer"></div>
+            </div>
+
+            <div class="stats">
+                <p>예산: <span id="money" class="stat-value">10</span> M$</p>
+                <p>클릭당 수익: <span id="click-power" class="stat-value">1</span> M$</p>
+                <p>환경 정화율: <span id="env-stat" class="stat-value">0</span>%</p>
+                <p>테라포밍 진행도: <span id="progress-text" class="stat-value">0</span>%</p>
+            </div>
+            <div class="progress-bar">
+                <div id="progress-fill" class="fill"></div>
+            </div>
+
+            <button class="btn" onclick="mineResource()">⛏️ 행성 자원 채굴</button>
+            <button class="btn" id="btn-next-stage" onclick="nextStage()" style="background-color: #2196F3; box-shadow: 0 4px 0 #0d47a1; display: none;">🚀 다음 행성으로 이동하기</button>
+        </div>
+
+        <!-- 구매 및 시설 강화 -->
+        <div class="panel">
+            <h2>🏗️ 기지 건설 및 장비 강화</h2>
+            
+            <div class="building-item" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                <p><strong id="name-click">채굴 드릴 강화</strong> (클릭 +1 M$)</p>
+                <p>레벨: <span id="level-click">1</span> | 비용: <span id="cost-click">10</span> M$</p>
+                <button class="btn" id="btn-click" onclick="buyClickUpgrade()">드릴 강화</button>
+            </div>
+
+            <div class="building-item">
+                <p><strong id="name-b1">발열 인프라</strong> (환경 +0.05%/초)</p>
+                <p>보유: <span id="count-b1">0</span>개 | 비용: <span id="cost-b1">15</span> M$</p>
+                <button class="btn" id="btn-b1" onclick="buyBuilding('b1')">건축하기</button>
+            </div>
+
+            <div class="building-item">
+                <p><strong id="name-b2">대형 바이오돔</strong> (환경 +0.2%/초)</p>
+                <p>보유: <span id="count-b2">0</span>개 | 비용: <span id="cost-b2">80</span> M$</p>
+                <button class="btn" id="btn-b2" onclick="buyBuilding('b2')">건축하기</button>
+            </div>
+
+            <div class="building-item">
+                <p><strong id="name-b3">궤도 에너지 발전소</strong> (수익 +3 M$/초)</p>
+                <p>보유: <span id="count-b3">0</span>개 | 비용: <span id="cost-b3">150</span> M$</p>
+                <button class="btn" id="btn-b3" onclick="buyBuilding('b3')">건축하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUILDING_MODELS = {
+            b1: (scale) => `<svg width="${60*scale}" height="${60*scale}" viewBox="0 0 100 100">
+                    <polygon points="20,80 50,95 80,80 50,65" fill="#3a3d40" stroke="#111" stroke-width="2"/>
+                    <path d="M35,75 L35,30 L50,15 L65,30 L65,75 Z" fill="#7a8a99" stroke="#222" stroke-width="2"/>
+                    <circle cx="50" cy="30" r="12" fill="#ff4400" filter="drop-shadow(0 0 8px #ff4400)"/>
+                    <line x1="50" y1="95" x2="50" y2="15" stroke="#4a5a69" stroke-width="2"/>
+                 </svg>`,
+            b2: (scale) => `<svg width="${70*scale}" height="${55*scale}" viewBox="0 0 120 90">
+                    <ellipse cx="60" cy="70" rx="50" ry="15" fill="#223322" stroke="#111"/>
+                    <path d="M10,70 Q60,-10 110,70 Z" fill="rgba(0, 230, 118, 0.35)" stroke="#00e676" stroke-width="3"/>
+                    <circle cx="60" cy="55" r="10" fill="#00c853"/>
+                    <circle cx="40" cy="62" r="6" fill="#2e7d32"/>
+                    <circle cx="80" cy="62" r="7" fill="#2e7d32"/>
+                    <path d="M30,50 Q60,10 90,50" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+                 </svg>`,
+            b3: (scale) => `<svg width="${80*scale}" height="${60*scale}" viewBox="0 0 130 90">
+                    <polygon points="50,85 65,90 80,85 65,80" fill="#222"/>
+                    <line x1="65" y1="85" x2="65" y2="20" stroke="#aaa" stroke-width="4"/>
+                    <rect x="10" y="25" width="40" height="18" fill="#1565c0" stroke="#90caf9" stroke-width="2" transform="rotate(-10 30 34)"/>
+                    <rect x="80" y="25" width="40" height="18" fill="#1565c0" stroke="#90caf9" stroke-width="2" transform="rotate(10 100 34)"/>
+                    <circle cx="65" cy="20" r="8" fill="#ffeb3b" filter="drop-shadow(0 0 10px #ffeb3b)"/>
+                 </svg>`
+        };
+
+        // 각 행성별 검증된 이미지 URL 적용
+        const STAGES = [
+            {
+                name: "단계 1: 화성 (Mars)",
+                bg: "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80",
+                clickBaseCost: 10,
+                clickPowerScale: 1,
+                b1: { name: "발열 인프라", cost: 15, env: 0.05, money: 0 },
+                b2: { name: "대형 바이오돔", cost: 80, env: 0.2, money: 0 },
+                b3: { name: "궤도 에너지 발전소", cost: 150, env: 0, money: 3 }
+            },
+            {
+                name: "단계 2: 수성 (Mercury)",
+                bg: "https://images.unsplash.com/photo-1545156521-77bd85671d30?auto=format&fit=crop&w=1000&q=80",
+                clickBaseCost: 200,
+                clickPowerScale: 5,
+                b1: { name: "차열 반사경", cost: 300, env: 0.03, money: 0 },
+                b2: { name: "지하 지하 냉각소", cost: 1500, env: 0.12, money: 0 },
+                b3: { name: "태양 풍력 기지", cost: 4000, env: 0, money: 20 }
+            },
+            {
+                name: "단계 3: 목성 (Jupiter)",
+                bg: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?auto=format&fit=crop&w=1000&q=80",
+                clickBaseCost: 5000,
+                clickPowerScale: 30,
+                b1: { name: "가스 스쿠퍼", cost: 10000, env: 0.02, money: 0 },
+                b2: { name: "대기 정화 정제소", cost: 50000, env: 0.08, money: 0 },
+                b3: { name: "핵융합 가공소", cost: 120000, env: 0, money: 150 }
+            },
+            {
+                name: "단계 4: 토성 (Saturn)",
+                bg: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?auto=format&fit=crop&w=1000&q=80",
+                clickBaseCost: 100000,
+                clickPowerScale: 200,
+                b1: { name: "고리 빙하 채굴기", cost: 200000, env: 0.01, money: 0 },
+                b2: { name: "인공 중력 유지기", cost: 1000000, env: 0.05, money: 0 },
+                b3: { name: "헬륨3 추출 타워", cost: 2500000, env: 0, money: 800 }
+            },
+            {
+                name: "단계 5: 태양 (Sun - 최종)",
+                bg: "https://images.unsplash.com/photo-1532635241-17e820acc59f?auto=format&fit=crop&w=1000&q=80",
+                clickBaseCost: 5000000,
+                clickPowerScale: 2500,
+                b1: { name: "다이슨 스웜 어레이", cost: 10000000, env: 0.008, money: 0 },
+                b2: { name: "복사열 흡수 쉴드", cost: 50000000, env: 0.03, money: 0 },
+                b3: { name: "항성 제어 코어", cost: 150000000, env: 0, money: 5000 }
+            }
+        ];
+
+        let currentStage = 0;
+        let money = 10;
+        let envProgress = 0;
+        let clickPower = 1;
+        let clickUpgradeLevel = 1;
+        let clickUpgradeCost = 10;
+
+        let buildings = {
+            b1: { count: 0, cost: 0 },
+            b2: { count: 0, cost: 0 },
+            b3: { count: 0, cost: 0 }
+        };
+
+        function loadStage(stageIdx) {
+            const stage = STAGES[stageIdx];
+            document.getElementById('stage-title').innerText = stage.name;
+            
+            // 배경 이미지 세팅
+            const gameView = document.getElementById('game-view');
+            gameView.style.backgroundImage = `url('${stage.bg}')`;
+            
+            document.getElementById('surface-layer').innerHTML = '';
+            
+            envProgress = 0;
+            clickUpgradeCost = stage.clickBaseCost;
+
+            buildings.b1 = { count: 0, cost: stage.b1.cost };
+            buildings.b2 = { count: 0, cost: stage.b2.cost };
+            buildings.b3 = { count: 0, cost: stage.b3.cost };
+
+            document.getElementById('name-b1').innerText = stage.b1.name;
+            document.getElementById('name-b2').innerText = stage.b2.name;
+            document.getElementById('name-b3').innerText = stage.b3.name;
+            
+            document.getElementById('btn-next-stage').style.display = 'none';
+
+            updateUI();
+        }
+
+        function mineResource() {
+            money += clickPower;
+            updateUI();
+        }
+
+        function buyClickUpgrade() {
+            if (money >= clickUpgradeCost) {
+                money -= clickUpgradeCost;
+                clickPower += STAGES[currentStage].clickPowerScale;
+                clickUpgradeLevel++;
+                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.5);
+                updateUI();
+            }
+        }
+
+        function buyBuilding(type) {
+            let b = buildings[type];
+
+            if (money >= b.cost) {
+                money -= b.cost;
+                b.count++;
+                b.cost = Math.floor(b.cost * 1.45);
+
+                renderBuildingOnSurface(type);
+                updateUI();
+            }
+        }
+
+        function renderBuildingOnSurface(type) {
+            const layer = document.getElementById('surface-layer');
+            const elem = document.createElement('div');
+            elem.className = 'building-object';
+
+            const posX = Math.floor(Math.random() * 76) + 12;
+            const posY = Math.floor(Math.random() * 28) + 68;
+            const scale = 0.65 + (posY - 68) * 0.015;
+
+            elem.innerHTML = BUILDING_MODELS[type](scale);
+            elem.style.left = `${posX}%`;
+            elem.style.top = `${posY}%`;
+            elem.style.zIndex = Math.floor(posY * 10);
+
+            layer.appendChild(elem);
+        }
+
+        function nextStage() {
+            if (currentStage < STAGES.length - 1) {
+                currentStage++;
+                loadStage(currentStage);
+            } else {
+                alert("🎉 축하합니다! 태양계 전체를 성공적으로 테라포밍했습니다!");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('money').innerText = money.toLocaleString();
+            document.getElementById('click-power').innerText = clickPower.toLocaleString();
+            document.getElementById('env-stat').innerText = envProgress.toFixed(2);
+
+            let totalProgress = Math.min(100, Math.floor(envProgress));
+            document.getElementById('progress-text').innerText = totalProgress;
+            document.getElementById('progress-fill').style.width = totalProgress + '%';
+
+            document.getElementById('level-click').innerText = clickUpgradeLevel;
+            document.getElementById('cost-click').innerText = clickUpgradeCost.toLocaleString();
+            document.getElementById('btn-click').disabled = money < clickUpgradeCost;
+
+            for (let type in buildings) {
+                document.getElementById(`count-${type}`).innerText = buildings[type].count;
+                document.getElementById(`cost-${type}`).innerText = buildings[type].cost.toLocaleString();
+                document.getElementById(`btn-${type}`).disabled = money < buildings[type].cost;
+            }
+
+            if (totalProgress >= 100 && document.getElementById('btn-next-stage').style.display === 'none') {
+                if (currentStage < STAGES.length - 1) {
+                    document.getElementById('btn-next-stage').style.display = 'block';
+                }
+            }
+        }
+
+        setInterval(() => {
+            let stage = STAGES[currentStage];
+
+            envProgress += buildings.b1.count * stage.b1.env;
+            envProgress += buildings.b2.count * stage.b2.env;
+            
+            money += buildings.b3.count * stage.b3.money;
+
+            if (envProgress > 100) envProgress = 100;
+
+            updateUI();
+        }, 1000);
+
+        loadStage(0);
+    </script>
+</body>
+</html>
